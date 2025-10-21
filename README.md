@@ -38,7 +38,7 @@ Prerequisites
 Node.js (v14 or higher)
 npm
 
-Installation
+Instruction to run locally
 
 1. Clone the repository:
 
