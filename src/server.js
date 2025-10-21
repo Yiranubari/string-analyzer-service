@@ -1,4 +1,4 @@
-cat > server.js << "EOF";
+cat > (simple - server.js) << "EOF";
 const express = require("express");
 const crypto = require("crypto");
 const app = express();
@@ -49,34 +49,6 @@ function analyzeString(stringValue) {
     sha256_hash,
     character_frequency_map,
   };
-}
-
-// Natural language parser
-function parseNaturalLanguage(query) {
-  const lowerQuery = query.toLowerCase();
-  const filters = {};
-
-  if (lowerQuery.includes("palindromic") || lowerQuery.includes("palindrome")) {
-    filters.is_palindrome = true;
-  }
-
-  if (lowerQuery.includes("single word")) {
-    filters.word_count = 1;
-  }
-
-  const longerMatch = lowerQuery.match(/longer than (\d+) characters?/);
-  if (longerMatch) {
-    filters.min_length = parseInt(longerMatch[1]) + 1;
-  }
-
-  const charMatch = lowerQuery.match(
-    /contain(s|ing)? (the letter |the character )?([a-zA-Z])/
-  );
-  if (charMatch) {
-    filters.contains_character = charMatch[3].toLowerCase();
-  }
-
-  return filters;
 }
 
 // 1. POST /strings - Create/Analyze String
@@ -232,35 +204,57 @@ app.get("/strings/filter-by-natural-language", (req, res) => {
       return res.status(400).json({ error: 'Missing "query" parameter' });
     }
 
-    const parsedFilters = parseNaturalLanguage(query);
-    const allStrings = Array.from(stringsDB.values());
+    // Simple natural language parsing
+    const lowerQuery = query.toLowerCase();
+    const filters = {};
+
+    if (
+      lowerQuery.includes("palindromic") ||
+      lowerQuery.includes("palindrome")
+    ) {
+      filters.is_palindrome = true;
+    }
+
+    if (lowerQuery.includes("single word")) {
+      filters.word_count = 1;
+    }
+
+    const longerMatch = lowerQuery.match(/longer than (\d+) characters?/);
+    if (longerMatch) {
+      filters.min_length = parseInt(longerMatch[1]) + 1;
+    }
+
+    const charMatch = lowerQuery.match(
+      /contain(s|ing)? (the letter |the character )?([a-zA-Z])/
+    );
+    if (charMatch) {
+      filters.contains_character = charMatch[3].toLowerCase();
+    }
 
     // Apply filters
+    const allStrings = Array.from(stringsDB.values());
     let results = allStrings.filter((item) => {
       if (
-        parsedFilters.is_palindrome !== undefined &&
-        item.properties.is_palindrome !== parsedFilters.is_palindrome
+        filters.is_palindrome !== undefined &&
+        item.properties.is_palindrome !== filters.is_palindrome
       ) {
         return false;
       }
       if (
-        parsedFilters.word_count !== undefined &&
-        item.properties.word_count !== parsedFilters.word_count
+        filters.word_count !== undefined &&
+        item.properties.word_count !== filters.word_count
       ) {
         return false;
       }
       if (
-        parsedFilters.min_length !== undefined &&
-        item.properties.length < parsedFilters.min_length
+        filters.min_length !== undefined &&
+        item.properties.length < filters.min_length
       ) {
         return false;
       }
       if (
-        parsedFilters.contains_character !== undefined &&
-        !(
-          parsedFilters.contains_character in
-          item.properties.character_frequency_map
-        )
+        filters.contains_character !== undefined &&
+        !(filters.contains_character in item.properties.character_frequency_map)
       ) {
         return false;
       }
@@ -272,7 +266,7 @@ app.get("/strings/filter-by-natural-language", (req, res) => {
       count: results.length,
       interpreted_query: {
         original: query,
-        parsed_filters: parsedFilters,
+        parsed_filters: filters,
       },
     });
   } catch (error) {
@@ -310,9 +304,8 @@ app.get("/health", (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`String Analyzer Service running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
+  console.log(`✅ String Analyzer Service running on port ${PORT}`);
+  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+  console.log(`🚀 Ready to accept requests!`);
 });
-
-module.exports = app;
 EOF;
