@@ -1,11 +1,12 @@
+cat > package.json << 'EOF'
 {
   "name": "string-analyzer-service",
   "version": "1.0.0",
   "description": "RESTful API service that analyzes strings and stores their computed properties",
-  "main": "server.js",
+  "main": "src/server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
     "test": "echo \"No tests yet\" && exit 0"
   },
   "dependencies": {
@@ -14,12 +15,8 @@
   "devDependencies": {
     "nodemon": "^3.0.1"
   },
-  "keywords": [
-    "api",
-    "string",
-    "analyzer",
-    "rest"
-  ],
-  "author": "Yiranubari Maamaa",
+  "keywords": ["api", "string", "analyzer", "rest"],
+  "author": "Your Name",
   "license": "MIT"
 }
+EOF
