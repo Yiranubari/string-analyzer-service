@@ -1,4 +1,4 @@
-cat > (simple - server.js) << "EOF";
+cat > (src / server.js) << "EOF";
 const express = require("express");
 const crypto = require("crypto");
 const app = express();
@@ -49,6 +49,34 @@ function analyzeString(stringValue) {
     sha256_hash,
     character_frequency_map,
   };
+}
+
+// Natural language parser
+function parseNaturalLanguage(query) {
+  const lowerQuery = query.toLowerCase();
+  const filters = {};
+
+  if (lowerQuery.includes("palindromic") || lowerQuery.includes("palindrome")) {
+    filters.is_palindrome = true;
+  }
+
+  if (lowerQuery.includes("single word")) {
+    filters.word_count = 1;
+  }
+
+  const longerMatch = lowerQuery.match(/longer than (\d+) characters?/);
+  if (longerMatch) {
+    filters.min_length = parseInt(longerMatch[1]) + 1;
+  }
+
+  const charMatch = lowerQuery.match(
+    /contain(s|ing)? (the letter |the character )?([a-zA-Z])/
+  );
+  if (charMatch) {
+    filters.contains_character = charMatch[3].toLowerCase();
+  }
+
+  return filters;
 }
 
 // 1. POST /strings - Create/Analyze String
@@ -204,57 +232,35 @@ app.get("/strings/filter-by-natural-language", (req, res) => {
       return res.status(400).json({ error: 'Missing "query" parameter' });
     }
 
-    // Simple natural language parsing
-    const lowerQuery = query.toLowerCase();
-    const filters = {};
-
-    if (
-      lowerQuery.includes("palindromic") ||
-      lowerQuery.includes("palindrome")
-    ) {
-      filters.is_palindrome = true;
-    }
-
-    if (lowerQuery.includes("single word")) {
-      filters.word_count = 1;
-    }
-
-    const longerMatch = lowerQuery.match(/longer than (\d+) characters?/);
-    if (longerMatch) {
-      filters.min_length = parseInt(longerMatch[1]) + 1;
-    }
-
-    const charMatch = lowerQuery.match(
-      /contain(s|ing)? (the letter |the character )?([a-zA-Z])/
-    );
-    if (charMatch) {
-      filters.contains_character = charMatch[3].toLowerCase();
-    }
+    const parsedFilters = parseNaturalLanguage(query);
+    const allStrings = Array.from(stringsDB.values());
 
     // Apply filters
-    const allStrings = Array.from(stringsDB.values());
     let results = allStrings.filter((item) => {
       if (
-        filters.is_palindrome !== undefined &&
-        item.properties.is_palindrome !== filters.is_palindrome
+        parsedFilters.is_palindrome !== undefined &&
+        item.properties.is_palindrome !== parsedFilters.is_palindrome
       ) {
         return false;
       }
       if (
-        filters.word_count !== undefined &&
-        item.properties.word_count !== filters.word_count
+        parsedFilters.word_count !== undefined &&
+        item.properties.word_count !== parsedFilters.word_count
       ) {
         return false;
       }
       if (
-        filters.min_length !== undefined &&
-        item.properties.length < filters.min_length
+        parsedFilters.min_length !== undefined &&
+        item.properties.length < parsedFilters.min_length
       ) {
         return false;
       }
       if (
-        filters.contains_character !== undefined &&
-        !(filters.contains_character in item.properties.character_frequency_map)
+        parsedFilters.contains_character !== undefined &&
+        !(
+          parsedFilters.contains_character in
+          item.properties.character_frequency_map
+        )
       ) {
         return false;
       }
@@ -266,7 +272,7 @@ app.get("/strings/filter-by-natural-language", (req, res) => {
       count: results.length,
       interpreted_query: {
         original: query,
-        parsed_filters: filters,
+        parsed_filters: parsedFilters,
       },
     });
   } catch (error) {
@@ -302,10 +308,28 @@ app.get("/health", (req, res) => {
   res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
+// Root endpoint
+app.get("/", (req, res) => {
+  res.status(200).json({
+    message: "String Analyzer Service",
+    endpoints: {
+      "POST /strings": "Analyze and store a string",
+      "GET /strings/:string_value": "Get analyzed string",
+      "GET /strings": "Get all strings with filtering",
+      "GET /strings/filter-by-natural-language": "Natural language filtering",
+      "DELETE /strings/:string_value": "Delete a string",
+      "GET /health": "Service health check",
+    },
+  });
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`✅ String Analyzer Service running on port ${PORT}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+  console.log(`🏠 API root: http://localhost:${PORT}/`);
   console.log(`🚀 Ready to accept requests!`);
 });
+
+module.exports = app;
 EOF;
